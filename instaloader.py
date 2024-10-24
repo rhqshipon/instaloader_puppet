@@ -6,18 +6,19 @@ import signal
 import sys
 
 
-
-
 # Detect if the OS is Windows
 def is_windows():
     return platform.system().lower() == "windows"
-    
+
 
 # Function to run instaloader with graceful handling of interruptions
 def instaloader_init(*args):
+    args = list(args)
     instaloader_dir = rhqArchive / "Data" / "Self" / "Media" / "Photos and Videos" / "latest" / "Bulk" / "Pictures" / "instaloader"
     user_names = []
     remaining_args = []
+    full_update_arg = False
+    
     try:
         os.chdir(instaloader_dir)  # Change to the instaloader directory
         # Handle Login arguments
@@ -31,6 +32,7 @@ def instaloader_init(*args):
             print("\nFull update mode. This will update the whole library of your instaloader folder!")
             user_names = [f.name for f in Path(instaloader_dir).iterdir() if f.is_dir()]
             print(f"\nFolders or usernames found: {user_names}")
+            full_update_arg = True
         elif "http" in args[-1]:
             username = arg.split("/")[-1].split("?")[0]
             if username:
@@ -39,7 +41,8 @@ def instaloader_init(*args):
         # Collect any remaining arguments not considered as URLs
             print("\nNo Instagram link has been detected. Using the last argument as the username.")
             user_names.append(args[-1])
-
+        del args[-1]
+        
         for username in user_names:
             print(f"\nCurrently working for: {username}")
             if "full_update_arg" in args[1]:
@@ -62,12 +65,16 @@ def instaloader_init(*args):
             else:
                 pass
             
+            args_to_remove = ["full_update_arg", "login_arg"]
+            remaining_master_args = list(filter(lambda x: x not in args_to_remove, args))
+            
             # Construct instaloader command
-            instaloader_cmd = ['instaloader', '--no-video-thumbnails', '--no-metadata-json', '--no-captions'] + list(remaining_args) + [username]
+            instaloader_cmd = ['instaloader', '--no-video-thumbnails', '--no-metadata-json', '--no-captions'] + remaining_args + remaining_master_args + [username]
             subprocess.run(instaloader_cmd, shell=is_windows())  # Run the command
 
             # Ask about EXIF handling
-            if "full_update_arg" not in args[1]:
+            
+            if not full_update_arg:
                 set_exif = input("Do you want to set date EXIF(s) from filename(s)? (yes/No): ").lower()
                 if set_exif == "y" or set_exif == "yes":
                     try:
@@ -87,7 +94,8 @@ def instaloader_init(*args):
                     print("Operation canceled.")
             else:
                 print("\nSetting EXIF has been cancelled automatically due to full update mode.")
-                    
+            
+            print("\nComplete!\n\n")
     except KeyboardInterrupt:
         print("\nOperation interrupted by user. Exiting gracefully...")
         sys.exit(1)  # Exit the program after graceful handling
