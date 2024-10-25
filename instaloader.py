@@ -77,9 +77,6 @@ def instaloader_init(*args):
             instaloader_cmd = ['instaloader', '--no-video-thumbnails', '--no-metadata-json', '--no-captions'] + remaining_args + remaining_master_args + [username]
             subprocess.run(instaloader_cmd, shell=is_windows())  # Run the command
             
-            # if full_update_arg:
-                # remaining_args.append("--fast-update")
-                
             # Ask about EXIF handling
             if not full_update_arg:
                 set_exif = input("Do you want to set date EXIF(s) from filename(s)? (yes/No): ").lower()
@@ -101,8 +98,6 @@ def instaloader_init(*args):
                     print("Operation canceled.")
             else:
                 print("\nSetting EXIF has been canceled automatically due to full update mode.")
-            
-            
             print("\nComplete!\n\n")
 
     except KeyboardInterrupt:
