@@ -55,24 +55,20 @@ def instaloader_init(*args):
             print(f"\nCurrently working for: {username}")
             if full_update_arg:
                 current_directory = instaloader_dir / username
-                remaining_args.append("--fast-update")
-                if "--no-videos" in remaining_args:
-                    remaining_args.remove("--no-videos")
-                if "--no-pictures" in remaining_args:
-                    remaining_args.remove("--no-pictures")
+                remaining_args_to_remove = ["--fast-update", "--no-videos", "--no-pictures"]
+                remaining_args = [arg for arg in remaining_args if arg not in remaining_args_to_remove]
                 is_video_present = False
                 is_image_present = False
                 is_video_present = any(f.suffix == '.mp4' for f in current_directory.iterdir())
                 is_image_present = any(f.suffix == '.jpg' for f in current_directory.iterdir())
                 if is_image_present and is_video_present:
-                    if "--fast-update" in remaining_args:
-                        remaining_args.remove("--fast-update")
-                if is_image_present:
-                    remaining_args.append("--no-videos")
-                if is_video_present:
-                    remaining_args.append("--no-pictures")
-                    if "--fast-update" in remaining_args:
-                        remaining_args.remove("--fast-update")
+                    remaining_args.append("--fast-update")
+                else:
+                    if is_image_present:
+                        remaining_args.append("--no-videos")
+                        remaining_args.append("--fast-update")
+                    if is_video_present:
+                        remaining_args.append("--no-pictures")
 
             args_to_remove = ["full_update_arg", "login_arg"]
             remaining_master_args = [arg for arg in args if arg not in args_to_remove]
@@ -106,8 +102,7 @@ def instaloader_init(*args):
             else:
                 print("\nSetting EXIF has been canceled automatically due to full update mode.")
             
-            remaining_args_to_remove = ["--no-videos", "--no-pictures"]
-            remaining_args = [arg for arg in remaining_args if arg not in remaining_args_to_remove]
+            
             print("\nComplete!\n\n")
 
     except KeyboardInterrupt:
