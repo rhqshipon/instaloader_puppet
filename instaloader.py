@@ -5,11 +5,9 @@ from pathlib import Path
 import signal
 import sys
 
-
 # Detect if the OS is Windows
 def is_windows():
     return platform.system().lower() == "windows"
-
 
 # Function to run instaloader with graceful handling of interruptions
 def instaloader_init(*args):
@@ -18,65 +16,78 @@ def instaloader_init(*args):
     user_names = []
     remaining_args = []
     full_update_arg = False
-    
+
     try:
         os.chdir(instaloader_dir)  # Change to the instaloader directory
+
         # Handle Login arguments
-        if "login_arg" in args[0]:
+        if "login_arg" in args:
             remaining_args.append("--login=entropy.observed")
         else:
-            print("No login argument have been passed by default inside the script, please be aware to expect access errors!")
+            print("No login argument passed by default inside the script; expect access errors.")
+
+        # Check for full update argument
+        if "full_update_arg" in args:
             
-        if "full_update_arg" in args[1]:
-            remaining_args.append("--fast-update")
-            print("\nFull update mode. This will update the whole library of your instaloader folder!")
+            print("\nFull update mode. This will update the whole library in your instaloader folder!")
             user_names = [f.name for f in Path(instaloader_dir).iterdir() if f.is_dir()]
             print(f"\nFolders or usernames found: {user_names}")
             full_update_arg = True
-        elif "http" in args[-1]:
-            username = arg.split("/")[-1].split("?")[0]
-            if username:
-                user_names.append(username)
-        else:
-        # Collect any remaining arguments not considered as URLs
-            print("\nNo Instagram link has been detected. Using the last argument as the username.")
+
+        # Extract usernames from args
+        if isinstance(args, list):
+            usernames = [item.split("/")[-1].split("?")[0] for item in args if "http" in item]
+            user_names.extend(usernames)
+        elif isinstance(args, str) and "http" in args:
+            usernames = args.split("/")[-1].split("?")[0]
+            if usernames:
+                user_names.append(usernames)
+        elif args:
+            # Collect any remaining arguments not considered as URLs
+            print("\nNo Instagram link detected. Using the last argument as the username.")
             user_names.append(args[-1])
-        del args[-1]
-        
+
+        # Remove the last argument if not needed
+        if args:
+            args.pop()
+
         for username in user_names:
             print(f"\nCurrently working for: {username}")
-            if "full_update_arg" in args[1]:
+            if full_update_arg:
                 current_directory = instaloader_dir / username
+                remaining_args.append("--fast-update")
+                if "--no-videos" in remaining_args:
+                    remaining_args.remove("--no-videos")
+                if "--no-pictures" in remaining_args:
+                    remaining_args.remove("--no-pictures")
                 is_video_present = False
                 is_image_present = False
-
-                for file in current_directory.iterdir():
-                    if file.suffix == '.mp4':
-                        is_video_present = True
-                    if file.suffix == '.jpg':
-                        is_image_present = True
+                is_video_present = any(f.suffix == '.mp4' for f in current_directory.iterdir())
+                is_image_present = any(f.suffix == '.jpg' for f in current_directory.iterdir())
                 if is_image_present and is_video_present:
-                    pass
-                else:
-                    if is_image_present:
-                        remaining_args.append("--no-videos")
-                    if is_video_present:
-                        remaining_args.append("--no-pictures")
-            else:
-                pass
-            
+                    if "--fast-update" in remaining_args:
+                        remaining_args.remove("--fast-update")
+                if is_image_present:
+                    remaining_args.append("--no-videos")
+                if is_video_present:
+                    remaining_args.append("--no-pictures")
+                    if "--fast-update" in remaining_args:
+                        remaining_args.remove("--fast-update")
+
             args_to_remove = ["full_update_arg", "login_arg"]
-            remaining_master_args = list(filter(lambda x: x not in args_to_remove, args))
-            
+            remaining_master_args = [arg for arg in args if arg not in args_to_remove]
+
             # Construct instaloader command
             instaloader_cmd = ['instaloader', '--no-video-thumbnails', '--no-metadata-json', '--no-captions'] + remaining_args + remaining_master_args + [username]
             subprocess.run(instaloader_cmd, shell=is_windows())  # Run the command
-
-            # Ask about EXIF handling
             
+            # if full_update_arg:
+                # remaining_args.append("--fast-update")
+                
+            # Ask about EXIF handling
             if not full_update_arg:
                 set_exif = input("Do you want to set date EXIF(s) from filename(s)? (yes/No): ").lower()
-                if set_exif == "y" or set_exif == "yes":
+                if set_exif in ["y", "yes"]:
                     try:
                         os.chdir(username)
                         print(f"Setting date EXIF(s) from filename(s) for {username}...")
@@ -93,9 +104,12 @@ def instaloader_init(*args):
                 else:
                     print("Operation canceled.")
             else:
-                print("\nSetting EXIF has been cancelled automatically due to full update mode.")
+                print("\nSetting EXIF has been canceled automatically due to full update mode.")
             
+            remaining_args_to_remove = ["--no-videos", "--no-pictures"]
+            remaining_args = [arg for arg in remaining_args if arg not in remaining_args_to_remove]
             print("\nComplete!\n\n")
+
     except KeyboardInterrupt:
         print("\nOperation interrupted by user. Exiting gracefully...")
         sys.exit(1)  # Exit the program after graceful handling
@@ -130,11 +144,10 @@ def main(*args):
         print("\nProgram interrupted by user.")
         sys.exit(0)  # Graceful exit on interruption
 
-
 if is_windows():
     rhqArchive = Path("J:\\")
 else:
-    rhqArchive = Path("J:\\")
-    
+    rhqArchive = Path("/path/to/unix/folder")  # Set appropriate path for Unix-based systems
+
 if __name__ == "__main__":
     main(*sys.argv[1:])
